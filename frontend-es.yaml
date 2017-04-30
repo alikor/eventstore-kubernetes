@@ -1,0 +1,66 @@
+apiVersion: v1
+data:
+  frontend.conf: |-
+    upstream es {
+        server es.default.svc.cluster.local:2113;
+    }
+    server {
+        listen 2113;
+        location / {
+            proxy_set_header    X-Real-IP $remote_addr;
+            proxy_set_header    Host      $http_host;
+            proxy_pass          http://es;
+        }
+    }
+kind: ConfigMap
+metadata:
+  name: nginx-es-frontend-conf
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: "frontend-es"
+spec:
+  selector:
+    app: "frontend-es"
+  ports:
+    - protocol: "TCP"
+      port: 2113
+      targetPort: 2113
+      nodePort: 32113
+  type: NodePort
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: frontend-es
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: frontend-es
+        track: stable
+    spec:
+      containers:
+        - name: nginx
+          image: "nginx:1.9.14"
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/usr/sbin/nginx","-s","quit"]
+          volumeMounts:
+            - name: "nginx-es-frontend-conf"
+              mountPath: "/etc/nginx/conf.d"
+            #- name: "tls-certs"
+            #  mountPath: "/etc/tls"
+      volumes:
+        #- name: "tls-certs"
+        #  secret:
+        #    secretName: "tls-certs"
+        - name: "nginx-es-frontend-conf"
+          configMap:
+            name: "nginx-es-frontend-conf"
+            items:
+              - key: "frontend.conf"
+                path: "frontend.conf"
