@@ -6,9 +6,14 @@ spec:
   selector:
     escluster: "es"
   ports:
-    - protocol: "TCP"
+    - name: "ext-http"
+      protocol: "TCP"
       port: 2113
       targetPort: 2113
+    - name: "ext-tcp"
+      protocol: "TCP"
+      port: 1112
+      targetPort: 1112
   clusterIP: None
 ---
 apiVersion: apps/v1beta1
